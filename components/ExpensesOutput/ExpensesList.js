@@ -10,7 +10,7 @@ function renderExpenseItem(itemData){
 
 const ExpensesList = ({expenses}) => {
   return (
-    <FlatList data={expenses} renderItem={renderExpenseItem} keyExtractor={(item)=>item.id}/>
+    <FlatList data={expenses} renderItem={renderExpenseItem} keyExtractor={(item)=>item.id} showsVerticalScrollIndicator={false}/>
   )
 }
 
