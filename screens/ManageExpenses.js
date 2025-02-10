@@ -1,13 +1,17 @@
 import { StyleSheet, Text, View } from "react-native";
-import React, { useContext, useLayoutEffect } from "react";
+import React, { useContext, useLayoutEffect, useState } from "react";
 import IconButton from "../components/UI/IconButton";
 import { GlobalStyles } from "../constants/styles";
 import Buttons from "../components/UI/Buttons";
 import { ExpenseContext } from "../store/expenses-context";
 import ExpenseForm from "../components/ManageExpense/ExpenseForm";
-import { storeExpense } from "../util/http";
+import { deleteExpense, storeExpense, updateExpense } from "../util/http";
+import LoadingOverlay from "../components/UI/LoadingOverlay";
+import ErrorOverlay from "../components/UI/ErrorOverlay";
 
 const ManageExpenses = ({ route, navigation }) => {
+  const [isSubmitting, setIsSubmitting] = useState(false); //initially false as we are not sending data initially
+  const [error, setError] = useState();
   const expensesCtx= useContext(ExpenseContext);
   const editedExpenseId = route.params?.expenseId;
   const isEditing = !!editedExpenseId; /// !! is used to convert the value into boolean (it will return ture or false)
@@ -20,9 +24,18 @@ const ManageExpenses = ({ route, navigation }) => {
     });
   }, [navigation, isEditing]);
 
-  function deleteExpenseHandler() {
-    expensesCtx.deleteExpense(editedExpenseId);
-    navigation.goBack();
+  async function deleteExpenseHandler() {
+    setIsSubmitting(true); // change state to true while sending data
+    try{
+      await deleteExpense(editedExpenseId);
+      //setIsSubmitting(false); // change state to false after sending data
+      //no need to set it again false as we are closing the screen down 
+      expensesCtx.deleteExpense(editedExpenseId);
+      navigation.goBack();
+    }catch(error){
+      setError('Failed to delete expense. Please try again later.');
+      setIsSubmitting(false);
+    }
 
   }
 
@@ -32,16 +45,31 @@ const ManageExpenses = ({ route, navigation }) => {
   }
 
   
-  function confirmHandler(expenseData){
-    if(isEditing){
-      expensesCtx.updateExpense(editedExpenseId,expenseData);
+  async function confirmHandler(expenseData){
+    setIsSubmitting(true); // change state to true while sending data
+    try{
+      if(isEditing){
+        expensesCtx.updateExpense(editedExpenseId,expenseData);
+        await updateExpense(editedExpenseId,expenseData);
+      }
+      else{
+        const id= await storeExpense(expenseData);
+        expensesCtx.addExpense({...expenseData,id:id});
+      }
+      navigation.goBack();
+    }catch(error){
+      setError('Failed to save expense. Please try again later.');
+      setIsSubmitting(false);
     }
-    else{
-      storeExpense(expenseData);
-      expensesCtx.addExpense(expenseData);
-    }
-    navigation.goBack();
 
+  }
+  
+  if(error && !isSubmitting){
+    return <ErrorOverlay message={error} />
+  }
+
+  if(isSubmitting){
+    return <LoadingOverlay />
   }
 
   return (
